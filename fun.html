@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fun · Ellis Riggsbee</title>
+  <meta name="description" content="Simulator projects, music, and other quests by Ellis Riggsbee." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Inter:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="styles.css?v=fun-card-blurbs" />
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="wrap">
+      <span class="brand"><a href="index.html?fresh=site-current" style="color:inherit;">Ellie Riggsbee</a></span>
+      <ul>
+        <li><a href="about.html">About</a></li>
+        <li><a href="research.html">Research</a></li>
+        <li><a href="teaching.html">Teaching</a></li>
+        <li><a href="fun.html" aria-current="page">Fun</a></li>
+        <li><a href="cv.pdf" target="_blank" rel="noopener">CV</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="wrap">
+      <span class="pill">Fun</span>
+      <h1>Fun</h1>
+      <p class="tagline">Simulator projects, music, and other quests</p>
+    </div>
+  </section>
+
+  <section style="border-top:none; padding-top:0;">
+    <div class="wrap">
+      <div class="card">
+        <h2>Newcomb Simulator</h2>
+        <p>
+          An interactive simulator for Newcomb&rsquo;s problem!
+        </p>
+        <p><a class="btn" href="newcomb.html">Open simulator →</a></p>
+      </div>
+
+      <div class="card">
+        <h2>Music</h2>
+        <p>
+          Arrangements, performances, and releases
+        </p>
+        <p><a class="btn" href="music.html">Listen →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <p>© <span id="year"></span> Ellis Riggsbee · Built with plain HTML &amp; CSS.</p>
+    </div>
+  </footer>
+
+  <div id="brainvat" aria-hidden="true">
+    <div class="biv-body">
+      <svg viewBox="0 0 64 76" xmlns="http://www.w3.org/2000/svg" fill="none"
+           stroke="#a6c1f2" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 39 C18 31 26 28 32 30 C39 27 47 32 44 40 C47 46 41 50 36 49
+                 C33 53 26 52 25 47 C19 47 18 43 21 39 Z" fill="#f4a6ae" stroke="#e79aa6" stroke-width="1" />
+        <path d="M25 37 C29 35 32 39 30 41" stroke="#df8b99" stroke-width="1.5" />
+        <path d="M34 35 C38 37 36 41 39 40" stroke="#df8b99" stroke-width="1.5" />
+        <path d="M27 44 C31 43 34 45 33 46" stroke="#df8b99" stroke-width="1.5" />
+        <path d="M15 56 C12 26 22 14 32 14 C42 14 52 26 49 56" />
+        <path d="M27 14 C25 4 39 4 37 14" />
+        <path d="M13 57 L51 57" stroke-width="2.2" />
+        <path d="M12 57 C9 58 9 66 14 66 L50 66 C55 66 55 58 52 57" />
+        <path d="M10 60 L14 64 M14 60 L10 64" stroke-width="1.6" />
+        <path d="M50 60 L54 64 M54 60 L50 64" stroke-width="1.6" />
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+  <script src="cursor.js?v=fun-card-blurbs"></script>
+  <script src="brainvat.js"></script>
+</body>
+</html>

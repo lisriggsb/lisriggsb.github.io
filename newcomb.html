@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Newcomb Problem Simulator · Ellis Riggsbee</title>
+  <meta name="description" content="An interactive simulator for Newcomb's problem, by Ellis Riggsbee." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Inter:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="styles.css?v=newcomb-code-in-place" />
+  <style>
+    /* ---- Simulator "console" (web port of the original Python program) ---- */
+    .console {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 8px;
+      margin: 22px 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+    .screen {
+      max-height: 460px;
+      overflow-y: auto;
+      padding: 20px 22px;
+      scroll-behavior: smooth;
+    }
+    .line { white-space: pre-wrap; margin: 0 0 0.55em; }
+    .line.you { color: var(--accent); font-weight: 600; }       /* echoes your choice */
+    .line.err { color: #c0392b; }
+    .line.head { font-family: var(--serif); font-size: 1.15rem; margin-top: 0.6em; }
+    .line.win { font-family: var(--serif); font-size: 1.25rem; color: var(--accent); }
+    .line.quote { font-style: italic; color: var(--muted); }
+
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      padding: 14px 22px 18px;
+      border-top: 1px solid var(--border);
+    }
+    .controls:empty { display: none; }
+    .numrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .numrow input {
+      font: inherit; padding: 9px 12px; width: 130px;
+      border: 1px solid var(--border); border-radius: 9px;
+      background: var(--bg); color: var(--text);
+    }
+    .btn.choice { background: transparent; color: var(--accent); border: 1px solid var(--accent); text-align: left; }
+    .btn.choice:hover { background: var(--accent-soft); }
+  </style>
+</head>
+<body class="newcomb-page">
+
+  <nav class="nav">
+    <div class="wrap">
+      <span class="brand"><a href="index.html?fresh=site-current" style="color:inherit;">Ellie Riggsbee</a></span>
+      <ul>
+        <li><a href="fun.html">← Back to Fun</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="wrap">
+      <span class="pill">Decision Theory</span>
+      <h1>The Newcomb Problem Simulator</h1>
+      <p class="tagline">
+        This is my first computer program and final project for Stanford's
+        <a class="link" href="https://codeinplace.stanford.edu/" target="_blank" rel="noopener">Code in Place</a>
+        (2026). Though imperfect, it is intended to simulate Newcomb's problem
+        and intuitively show how two reasonable rational choice theories will
+        tell you to do conflicting things. You get to choose the predictor's
+        accuracy and whether you'd like to simulate one or more rounds. I hope
+        you enjoy!
+      </p>
+    </div>
+  </section>
+
+  <section style="border-top:none; padding-top:0;">
+    <div class="wrap">
+      <div class="console">
+        <div class="screen" id="screen"></div>
+        <div class="controls" id="controls"></div>
+      </div>
+      <p class="muted small">
+        Web version of my original Python program. Run it in a terminal too —
+        the source lives in the project folder.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <p><a class="link" href="fun.html">← Back to Fun</a></p>
+    </div>
+  </footer>
+
+  <script>
+  /* =======================================================================
+     Newcomb Problem Simulator — browser port of main.py
+     The game logic and text are kept faithful to the original.
+     ======================================================================= */
+
+  const BOX_A_AMOUNT = 100;
+  const BOX_B_AMOUNT = 1000000;
+
+  const screenEl = document.getElementById('screen');
+  const controlsEl = document.getElementById('controls');
+
+  // ---- tiny UI toolkit (stands in for print() / input() / Enter-to-continue) ----
+  const money = n => '$' + Number(n).toLocaleString('en-US');
+
+  function say(text, cls) {
+    const div = document.createElement('div');
+    div.className = 'line' + (cls ? ' ' + cls : '');
+    div.textContent = text;
+    screenEl.appendChild(div);
+    screenEl.scrollTop = screenEl.scrollHeight;
+    return div;
+  }
+  function clearControls() { controlsEl.innerHTML = ''; }
+  function mkBtn(label, cls) {
+    const b = document.createElement('button');
+    b.className = 'btn ' + (cls || '');
+    b.textContent = label;
+    return b;
+  }
+
+  // Press-Enter-to-continue beat.
+  function pause(label) {
+    return new Promise(res => {
+      clearControls();
+      const b = mkBtn(label || 'Continue', 'ghost');
+      b.onclick = () => { clearControls(); res(); };
+      controlsEl.appendChild(b);
+      b.focus();
+    });
+  }
+
+  // A menu of choices; echoes the pick and resolves its value.
+  function choose(options) {
+    return new Promise(res => {
+      clearControls();
+      options.forEach(o => {
+        const b = mkBtn(o.label, 'choice');
+        b.onclick = () => { clearControls(); say('› ' + o.label, 'you'); res(o.value); };
+        controlsEl.appendChild(b);
+      });
+    });
+  }
+  const askYesOrNo = () => choose([{label:'Yes', value:true}, {label:'No', value:false}]);
+
+  // A validated number entry (stands in for float()/int() input loops).
+  function askNumber(placeholder, validate, opts = {}) {
+    return new Promise(res => {
+      clearControls();
+      const row = document.createElement('div'); row.className = 'numrow';
+      const input = document.createElement('input');
+      input.type = 'number'; input.placeholder = placeholder;
+      if (opts.min !== undefined) input.min = opts.min;
+      if (opts.step !== undefined) input.step = opts.step;
+      const b = mkBtn('Enter');
+      const submit = () => {
+        const v = opts.integer ? parseInt(input.value, 10) : parseFloat(input.value);
+        const err = validate(v);
+        if (err) { say(err, 'err'); return; }
+        clearControls(); say('› ' + v, 'you'); res(v);
+      };
+      b.onclick = submit;
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+      row.appendChild(input); row.appendChild(b);
+      controlsEl.appendChild(row); input.focus();
+    });
+  }
+
+  // ---- core game logic (faithful to play_newcomb in main.py) ----
+  function playNewcomb(strategy, accuracy) {
+    const predictorIsRight = Math.random() < accuracy;
+    let predicted;
+    if (predictorIsRight) predicted = strategy;
+    else predicted = (strategy === 'one_box') ? 'two_box' : 'one_box';
+
+    const boxB = (predicted === 'one_box') ? BOX_B_AMOUNT : 0;
+    const payout = (strategy === 'one_box') ? boxB : BOX_A_AMOUNT + boxB;
+    return { payout, predicted, boxB };
+  }
+  const formatStrategy = s => (s === 'one_box') ? 'one-box' : 'two-box';
+
+  // ======================= the guided experience =======================
+
+  async function printIntro() {
+    say('Welcome to the Newcomb Problem Simulator!', 'head');
+    await pause();
+    say('There are two boxes:\nBox A is transparent and contains $100.\nBox B is opaque and contains either $1,000,000 or $0.');
+    await pause();
+    say('You can choose to take only Box B, or you can take both boxes.');
+    await pause();
+    say('But there is a catch!\nA predictor has already predicted what you will do before you do it.');
+    await pause();
+    say('If the predictor predicted that you would take only Box B,\nthen they have put $1,000,000 in Box B.');
+    await pause();
+    say('But if the predictor predicted that you would take both boxes,\nthen they have put $0 in Box B.');
+    await pause();
+  }
+
+  async function getPredictorAccuracy() {
+    say('In the original Newcomb Problem, we are supposed to imagine\nthat the predictor has never been wrong before...\n...and that’s why it’s very tricky!');
+    await pause();
+    say('But, in this simulator, you get to choose how accurate the predictor is.');
+    await pause();
+    const pct = await askNumber(
+      '0 to 100',
+      v => (isNaN(v) || v < 0 || v > 100) ? 'Sorry, please enter a number between 0 and 100.' : null,
+      { min: 0, step: 'any' }
+    );
+    say('How accurate is the predictor? You chose ' + pct + '%.');
+    return pct / 100;
+  }
+
+  async function playOnce(accuracy) {
+    say('Choose wisely! Which path will you take?', 'head');
+    const strategy = await choose([
+      { label: 'One-box: take only Box B', value: 'one_box' },
+      { label: 'Two-box: take both Box A and Box B', value: 'two_box' },
+    ]);
+
+    const { payout, predicted, boxB } = playNewcomb(strategy, accuracy);
+
+    say('You chose: ' + formatStrategy(strategy));
+    say('You won: ' + money(payout) + ' !', 'win');
+
+    if (await want('Would you like an explanation of this outcome?')) {
+      explainOneRound(strategy, predicted, boxB, payout);
+      await pause();
+    }
+    if (await want('Would you like a decision-theory explanation?')) {
+      await explainDecisionTheory();
+    }
+  }
+
+  function explainOneRound(strategy, predicted, boxB, payout) {
+    say('Explanation:', 'head');
+    say('The predictor predicted that you would choose: ' + formatStrategy(predicted));
+    if (predicted === 'one_box')
+      say('Because the predictor predicted that you’d take one box, Box B contained $1,000,000.');
+    else
+      say('Because the predictor predicted that you’d take both boxes, Box B contained $0.');
+
+    if (strategy === 'one_box')
+      say('You took only Box B, so your payout was exactly what was in Box B.');
+    else {
+      say('You took both boxes, so your payout was Box A plus Box B.');
+      say('Box A contained ' + money(BOX_A_AMOUNT) + '.');
+    }
+    say('So, your total payout was ' + money(payout) + '.');
+  }
+
+  async function runSimulation(accuracy) {
+    const numRounds = await askNumber(
+      'rounds',
+      v => (isNaN(v) || v <= 0) ? 'Sorry, please enter a number greater than 0.' : null,
+      { min: 1, step: 1, integer: true }
+    );
+
+    let oneBoxTotal = 0, twoBoxTotal = 0;
+    for (let i = 0; i < numRounds; i++) {
+      oneBoxTotal += playNewcomb('one_box', accuracy).payout;
+      twoBoxTotal += playNewcomb('two_box', accuracy).payout;
+    }
+    const oneBoxAvg = oneBoxTotal / numRounds;
+    const twoBoxAvg = twoBoxTotal / numRounds;
+
+    say('After ' + numRounds + ' rounds:', 'head');
+    say('One-boxing average payout: ' + money(round2(oneBoxAvg)));
+    say('Two-boxing average payout: ' + money(round2(twoBoxAvg)));
+
+    if (oneBoxAvg > twoBoxAvg) say('In this simulation, one-boxing did better.', 'win');
+    else if (twoBoxAvg > oneBoxAvg) say('In this simulation, two-boxing did better.', 'win');
+    else say('In this simulation, both strategies tied!', 'win');
+
+    if (await want('Would you like an explanation of the simulation?')) {
+      await explainSimulation(accuracy, oneBoxAvg, twoBoxAvg, numRounds);
+    }
+    if (await want('Would you like a decision-theory explanation?')) {
+      await explainDecisionTheory();
+    }
+  }
+
+  async function explainSimulation(accuracy, oneBoxAvg, twoBoxAvg, numRounds) {
+    say('Simulation Explanation:', 'head');
+    say('In each simulated round, the predictor was right about ' + round2(accuracy * 100) + '% of the time.');
+    await pause();
+    say('When the strategy was one-boxing:\n- If the predictor correctly predicted one-boxing, Box B had $1,000,000.\n- If the predictor incorrectly predicted two-boxing, Box B had $0.');
+    await pause();
+    say('When the strategy was two-boxing:\n- If the predictor correctly predicted two-boxing, Box B had $0.\n- If the predictor incorrectly predicted one-boxing, Box B had $1,000,000.\n- The two-boxer also gets Box A, which contains ' + money(BOX_A_AMOUNT) + '.');
+    await pause();
+
+    const difference = Math.abs(oneBoxAvg - twoBoxAvg);
+    if (difference < 10000) {
+      say('The two averages were pretty close in this run.\nThis can happen because simulations involve randomness, especially with a small number of rounds.\nYou simulated ' + numRounds + ' rounds.\nIf you run many more rounds, the averages usually settle into a clearer pattern!');
+    } else if (oneBoxAvg > twoBoxAvg) {
+      say('In this run, one-boxing had the higher average payout.\nThis happened because one-boxing was more often paired with Box B containing $1,000,000.\nThat is more likely when the predictor is very accurate!');
+    } else {
+      say('In this run, two-boxing had the higher average payout.\nThis can happen if the predictor accuracy is low.\nIt can also happen because of randomness if the number of simulated rounds is small.\nIn those cases, two-boxing may more often get the extra Box A money,\nor may sometimes get both Box A and a full Box B.');
+    }
+    say('One-boxing average: ' + money(round2(oneBoxAvg)));
+    say('Two-boxing average: ' + money(round2(twoBoxAvg)));
+    await pause();
+  }
+
+  async function explainDecisionTheory() {
+    say('Decision Theory Explanation:', 'head');
+    say('Newcomb’s Problem is hard, and it’s famous because it shows us how two\nreasonable ways of thinking about rational choice can prescribe\ndifferent actions.');
+    await pause();
+    say('In one camp is Evidential Decision Theory, which asks something like:\n"What would my choice be evidence of?"');
+    await pause();
+    say('In Newcomb’s Problem, if the predictor is highly accurate,\nthen choosing only Box B is strong evidence that the predictor\nalready predicted one-boxing.');
+    await pause();
+    say('And if the predictor did predict one-boxing, Box B contains $1,000,000.\n\nSo, from an evidential point of view, one-boxing looks like the way to go!');
+    await pause();
+    say('This is why one-boxing usually does better in the simulator\nwhen the predictor is highly accurate:\n\nOne-boxing is connected to a prediction that was probably already favorable.');
+    await pause();
+    say('On the other hand, Causal Decision Theory asks something like this:\n\n"What can my imminent choice actually cause?"');
+    await pause();
+    say('Recall that in Newcomb’s Problem, the prediction has already been made.\nThe money has already, as a matter of fact, either been placed in\nBox B, or left out of Box B.\n\nSo, the causal decision theorist says,\n"my choice now cannot actually *cause* Box B to be full or empty."');
+    await pause();
+
+    say('As a quick last exercise, let’s test the causal argument:', 'head');
+    say('Quick question:\nIf Box B is already full, which strategy gets more money?');
+    let ans = await choose([
+      { label: 'One-boxing', value: '1' },
+      { label: 'Two-boxing', value: '2' },
+    ]);
+    if (ans === '2')
+      say('Correct! If Box B is already full, two-boxing gets the $1,000,000 + Box A.');
+    else
+      say('Not quite! If Box B is already full, one-boxing gets the $1,000,000,\nbut two-boxing gets the $1,000,000 + Box A.');
+    await pause();
+
+    say('Another quick question:\nIf Box B is already empty, which strategy gets more money?');
+    ans = await choose([
+      { label: 'One-boxing', value: '1' },
+      { label: 'Two-boxing', value: '2' },
+    ]);
+    if (ans === '2')
+      say('Correct! If Box B is already empty, two-boxing still gets Box A.');
+    else
+      say('Not quite! If Box B is already empty, the one-boxer gets $0,\nbut the two-boxer gets Box A, too.');
+    await pause();
+
+    say('And that is the causal decision theorist’s main argument:\n\nOnce the boxes are already set, taking both boxes gets you\neverything one-boxing gets, plus Box A. :)\n\nThe expected utility of 2-boxing is higher in both possible states\nof Box B, which we can especially see when we think about the money\nalready being there or not.');
+    await pause();
+    say('So... does this simulator show that Evidential Decision Theory is better?!');
+    await pause();
+    say('In one sense, yes, because if the predictor is highly accurate,\none-boxing usually gets more money, as stipulated by the case.');
+    await pause();
+    say('But, the causal decision theorist thinks, this doesn’t settle everything!\nThey might think that one-boxers tend to be in better pre-set situations.');
+    await pause();
+    say('The highly accurate predictor saw them as one-boxers and filled Box B.\nBut once I am choosing, that setup has already happened (or not).\n\nSo, it’s ultimately my pre-set circumstances that come to bite me; not my choice.');
+    await pause();
+    say('So, EDT tells us to:\n"choose the action that is the best evidence of your situation."\n\nBut CDT says:\n"choose the action that best improves your situation causally."');
+    await pause();
+    say('Again, Newcomb’s Problem is famous because these two theories come apart!\n\nEDT seems to give the money-winning recommendation.\nAnd CDT seems to better respect the fact that the prediction\nand box-filling (or not-filling) have already happened.');
+    await pause();
+  }
+
+  async function askBoxerIdentity() {
+    say('After playing this round, are you a one-boxer or a two-boxer?');
+    const ans = await choose([
+      { label: 'One-boxer', value: '1' },
+      { label: 'Two-boxer', value: '2' },
+    ]);
+    if (ans === '1') say('"Why ain’t you richer?" — Jim Joyce', 'quote');
+    else say('"Yay!" — Jim Joyce somewhere, probably', 'quote');
+  }
+
+  // helper: yes/no gate with the prompt printed first
+  async function want(promptText) { say(promptText); return askYesOrNo(); }
+  const round2 = n => Math.round(n * 100) / 100;
+
+  // ---- main loop (faithful to main() in main.py) ----
+  async function main() {
+    await printIntro();
+    let keepPlaying = true;
+    while (keepPlaying) {
+      const accuracy = await getPredictorAccuracy();
+
+      say('Choose a mode:', 'head');
+      const mode = await choose([
+        { label: 'Play once', value: '1' },
+        { label: 'Simulate many rounds and compare strategies', value: '2' },
+      ]);
+
+      if (mode === '1') await playOnce(accuracy);
+      else await runSimulation(accuracy);
+
+      await askBoxerIdentity();
+
+      say('Would you like to play again?');
+      keepPlaying = await askYesOrNo();
+    }
+    say('Thanks for playing the Newcomb Problem Simulator!', 'head');
+    clearControls();
+    const again = mkBtn('Start over', 'ghost');
+    again.onclick = () => { screenEl.innerHTML = ''; main(); };
+    controlsEl.appendChild(again);
+  }
+
+  // ---- start screen ----
+  clearControls();
+  const startBtn = mkBtn('Begin ▸');
+  startBtn.onclick = () => { screenEl.innerHTML = ''; main(); };
+  controlsEl.appendChild(startBtn);
+  say('Press Begin to start the Newcomb Problem Simulator.', 'quote');
+  </script>
+  <script src="cursor.js?v=newcomb-code-in-place"></script>
+</body>
+</html>
