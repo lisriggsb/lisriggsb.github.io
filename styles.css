@@ -420,7 +420,7 @@ footer { padding: 44px 0 64px; margin-top: 8px; border-top: 1px solid var(--bord
 .cursor-toggle {
   position: fixed;
   right: 18px;
-  bottom: 90px;
+  bottom: 132px;
   z-index: 910;
   display: inline-flex;
   align-items: center;
@@ -446,6 +446,7 @@ footer { padding: 44px 0 64px; margin-top: 8px; border-top: 1px solid var(--bord
   position: absolute;
   top: calc(50% + 246px);
   right: calc(26px + 125px);
+  bottom: auto;
   transform: translateX(50%);
 }
 @media (max-width: 560px) {
