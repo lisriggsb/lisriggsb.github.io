@@ -1,17 +1,15 @@
 /* =========================================================================
    Cute yellow star cursor trail.
    Small stars sparkle out behind the cursor and fade. Tweak the knobs below.
-   Starts off for visitors who prefer reduced motion, unless they opt in.
+   Starts on for desktop visitors, unless they opt out.
    ========================================================================= */
 (function () {
   // ---- knobs ----
   var MIN_INTERVAL = 45;   // ms between stars (higher = sparser trail)
   var STAR = '★';          // the character used for the star
-  var STORAGE_KEY = 'ellie-star-cursor-v2';
+  var STORAGE_KEY = 'ellie-star-cursor-v3';
 
   var lastTime = 0;
-  var prefersReducedMotion = window.matchMedia &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var isSmallScreen = window.matchMedia &&
     window.matchMedia('(max-width: 560px)').matches;
   function getStoredPreference() {
@@ -24,8 +22,7 @@
     } catch (e) {}
   }
   var storedPreference = getStoredPreference();
-  var enabled = storedPreference === 'on' ||
-    (storedPreference !== 'off' && !prefersReducedMotion);
+  var enabled = storedPreference !== 'off';
   var toggleButton;
 
   function updateToggleLabel() {
