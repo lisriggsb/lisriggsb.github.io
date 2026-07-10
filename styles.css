@@ -458,11 +458,6 @@ footer { padding: 44px 0 64px; margin-top: 8px; border-top: 1px solid var(--bord
     bottom: 76px;
   }
 }
-@media (hover: none), (pointer: coarse) {
-  .cursor-toggle {
-    display: none;
-  }
-}
 
 /* ---- Cute yellow star cursor trail (see cursor.js) ---- */
 .cursor-star {

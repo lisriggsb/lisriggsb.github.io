@@ -1,7 +1,7 @@
 /* =========================================================================
    Cute yellow star cursor trail.
    Small stars sparkle out behind the cursor and fade. Tweak the knobs below.
-   Skips entirely for visitors who prefer reduced motion.
+   Starts off for visitors who prefer reduced motion, unless they opt in.
    ========================================================================= */
 (function () {
   // ---- knobs ----
@@ -12,8 +12,8 @@
   var lastTime = 0;
   var prefersReducedMotion = window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var isTouchFirst = window.matchMedia &&
-    (window.matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches);
+  var isSmallScreen = window.matchMedia &&
+    window.matchMedia('(max-width: 560px)').matches;
   function getStoredPreference() {
     try { return window.localStorage && window.localStorage.getItem(STORAGE_KEY); }
     catch (e) { return null; }
@@ -23,18 +23,20 @@
       if (window.localStorage) window.localStorage.setItem(STORAGE_KEY, value);
     } catch (e) {}
   }
-  var enabled = getStoredPreference() !== 'off' && !prefersReducedMotion;
+  var storedPreference = getStoredPreference();
+  var enabled = storedPreference === 'on' ||
+    (storedPreference !== 'off' && !prefersReducedMotion);
   var toggleButton;
 
   function updateToggleLabel() {
     if (!toggleButton) return;
-    toggleButton.textContent = enabled ? 'Stars off' : 'Stars on';
+    toggleButton.textContent = enabled ? 'Turn stars off' : 'Turn stars on';
     toggleButton.setAttribute('aria-pressed', String(!enabled));
     toggleButton.setAttribute('aria-label', enabled ? 'Turn off star cursor' : 'Turn on star cursor');
   }
 
   function addToggle() {
-    if (isTouchFirst) return;
+    if (isSmallScreen) return;
     if (document.querySelector('.cursor-toggle')) return;
     var homeHeroInner = document.querySelector('.home-hero .hero-inner');
     toggleButton = document.createElement('button');
