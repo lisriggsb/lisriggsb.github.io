@@ -449,10 +449,18 @@ footer { padding: 44px 0 64px; margin-top: 8px; border-top: 1px solid var(--bord
   transform: translateX(50%);
 }
 @media (max-width: 560px) {
+  .cursor-toggle {
+    display: none;
+  }
   .home-photo-toggle {
     position: fixed;
     right: 12px;
     bottom: 76px;
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  .cursor-toggle {
+    display: none;
   }
 }
 

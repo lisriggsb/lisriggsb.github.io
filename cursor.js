@@ -12,6 +12,8 @@
   var lastTime = 0;
   var prefersReducedMotion = window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var isTouchFirst = window.matchMedia &&
+    (window.matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches);
   function getStoredPreference() {
     try { return window.localStorage && window.localStorage.getItem(STORAGE_KEY); }
     catch (e) { return null; }
@@ -32,6 +34,7 @@
   }
 
   function addToggle() {
+    if (isTouchFirst) return;
     if (document.querySelector('.cursor-toggle')) return;
     var homeHeroInner = document.querySelector('.home-hero .hero-inner');
     toggleButton = document.createElement('button');
